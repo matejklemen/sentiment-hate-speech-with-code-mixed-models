@@ -1,128 +1,239 @@
-import json
-import openai
+#################################################################### SENTIMENT ANALYSIS ############################################################################
+
+import os
+from pathlib import Path
+!pip install datasets
+!pip install Openai
+from datasets import load_dataset
+#from dotenv import load_dotenv
+#load_dotenv()
+from openai import OpenAI
 import pandas as pd
+import csv
+import json
+
+df = pd.read_csv(csv_file_path)
+df.rename(columns = {'tweet':'prompt','sentiment_en':'completion'}, inplace = True)
+df['prompt'] = df['prompt'].str.strip()
+#df['completion'] = df['completion'].str.strip()
+df['prompt'] = df['prompt'] + "\n\nSentiment:\n\n"
+#df['completion'] = " "+df['completion'] + " END"
+df.to_json("gpt_train_prepared.jsonl", orient='records', lines=True)
+
+!openai tools fine_tunes.prepare_data -f gpt_train.jsonl
+train_path = "/content/gpt_train_prepared.jsonl"
+train_id = "file-6PDxzsGO1NIXUrg5q3syxM8N"
+fine_tune_id = "ftjob-76DoNZyAO45zQaIUq7mqFYAz"
+DO_UPLOAD = False
+DO_FINETUNE = False
+DO_CHECK =  True
+
+
+data = load_dataset("json", data_files={
+    "train": train_path,
+})
+
 api_key =""
-openai.api_key = api_key
-
-df = pd.read_csv('conda/envs/gpu_env/Cross_lingual/datasets/Final_datasets/Hindi/train.csv')
-# df = pd.read_csv('conda/envs/gpu_env/Cross_lingual/datasets/Final_datasets/French/train.csv')
-# df = pd.read_csv('conda/envs/gpu_env/Cross_lingual/datasets/Final_datasets/Tamil/train.csv')
-# df = pd.read_csv('conda/envs/gpu_env/Cross_lingual/datasets/Final_datasets/Russian/train.csv')
-
-def prompt_creation(sample):
-    INPUT_KEY = "Input"
-    tokens = sample.split()
-    max_tokens = 512
-    truncated_tokens = tokens[:max_tokens]
-    truncated_input = " ".join(truncated_tokens)
-    input_text = f"{INPUT_KEY} : {str(truncated_input)} "
-    return input_text
-    
-def completion(sample):
-    RESPONSE_KEY = ""
-    response = f"{RESPONSE_KEY}Label : {sample}"
-    return response
-    
-# df['prompt']= df.apply(prompt_creation,axis=1)
-df['prompt'] = df['tweet'].apply(prompt_creation)
-df['completion'] = df['sentiment'].apply(completion)
-# df['prompt'] = df.apply(prompt_creation,axis=1)
-
-sub_df = df[['prompt','completion']].copy()
-dataset_1 = sub_df.to_dict(orient='records')
-# save the json file 
-file_name = 'gpt_ft_.jsonl'
-with open(file_name, 'w') as f:
-    for record in dataset_1:
-        f.write(json.dumps(record) + '\n')
-        
-!pip install openai
-!openai tools fine_tunes.prepare_data -f gpt_ft.jsonl
-
-from openai import OpenAI
-# client = OpenAI()
-client = OpenAI(api_key)
-
-from openai import OpenAI
-# client = OpenAI()
-
-upload_response = client.files.create(
-  file=open("gpt_ft.jsonl", "rb"),
-  purpose="fine-tune"
+client = OpenAI(
+    api_key=api_key
 )
-file_id = upload_response.id
-file_id
 
-response = client.fine_tuning.jobs.create(
-  training_file=file_id, 
-  # model="curie-001"   # this variant was depritiated later and replaced with davinci for continuing the research tests
-  model="davinci-002",
-  hyperparameters={
-    "n_epochs":2,
-    "learning_rate_multiplier":0.1,
-  }
-)
-response
-
-job_id = response.id
-status = response.status
-
-print(f'Fine-tunning model with jobID: {job_id}.')
-print(f"Training Response: {response}")
-print(f"Training Status: {status}")
-
-status = response.status
-print(status)
-
-fine_tune_events = client.fine_tuning.jobs.list_events(fine_tuning_job_id=job_id)
-fine_tune_events
-
-retrieve_response = client.fine_tuning.jobs.retrieve(response.id)
-retrieve_response
-
-if retrieve_response.fine_tuned_model != None :
-    fine_tuned_model = response.fine_tuned_model
-    print(fine_tuned_model)
-else :
-    print("running")
-
-# Option 2 | if response.fine_tuned_model == null
-retrieve_response = client.fine_tuning.jobs.retrieve(response.id)
-fine_tuned_model = retrieve_response.fine_tuned_model
-fine_tuned_model
-
-def generated_output(prompt):
-    new_prompt = f'Input:{prompt}'
-    answer = client.completions.create(
-      model=fine_tuned_model,
-      prompt=new_prompt,
-      # max_tokens=5,
-      # temperature=0.1
+if DO_UPLOAD:
+    print("Uploading data...")
+    upload_response = client.files.create(
+        file=Path(train_path),
+        purpose="fine-tune"
     )
-    return answer.choices[0].text
 
-test = pd.read_csv('conda/envs/gpu_env/Cross_lingual/datasets/Final_datasets/Hindi/test.csv')
-test['output'] = test['tweet'].apply(generated_output)
-import re
-def pred_sentiment(sample):
-    if re.search(r'\bpositive\b', sample, flags=re.IGNORECASE):
-        label =  'Positive'
-    elif re.search(r'\bNegative\b', sample, flags=re.IGNORECASE):
-        label = 'Negative'
-    elif re.search(r'\bneutral\b', sample, flags=re.IGNORECASE):
-        label = 'Neutral'
-    elif re.search(r'\boffensive\b', sample, flags=re.IGNORECASE):
-        label = 'offensive'
-    else:
-        label = 'Unknown'
-    return label
-    
-import swifter
-test['pred'] = test['output'].swifter.apply(pred_sentiment)
-from sklearn.metrics import accuracy_score,f1_score
-predicted = df['pred']
-actual = df['output']
-accuracy = accuracy_score(actual, predicted)
-fscore = f1_score(actual, predicted, average='weighted')
-print(f"F-score: {fscore}")
-print(f"Accuracy: {accuracy}")
+    print(upload_response)
+    print(upload_response.id)
+    exit(0)
+
+if DO_FINETUNE:
+    fine_tune_response = client.fine_tuning.jobs.create(
+        model="davinci-002",  # Firstly used curie, which is now deprecated, davinci-002 is the suggested replacement
+        training_file=train_id,
+        hyperparameters={"n_epochs": 2},
+        #classification_n_classes=3
+    )
+
+    print(fine_tune_response)
+
+if DO_CHECK:
+    if fine_tune_id is None:
+        print("fine_tune_id is set to None (no-op)")
+        exit(0)
+
+    retrieve_response = client.fine_tuning.jobs.retrieve(fine_tuning_job_id=fine_tune_id)
+    print(retrieve_response)
+client.fine_tuning.jobs.list_events(fine_tune_id)
+
+# USING THE MODEL
+fine_tuned_model_id = 'ftjob-76DoNZyAO45zQaIUq7mqFYAz'
+api_key =""
+retrieve_response = client.fine_tuning.jobs.retrieve(fine_tuned_model_id)
+fine_tuned_model = retrieve_response.fine_tuned_model
+#!pip install tiktoken
+import tiktoken
+
+tiktoken.encoding_name_for_model('davinci-002')
+
+tokenizer = tiktoken.encoding_for_model('davinci-002')
+tokens = ["0", "1", "2"]
+token_id = tokenizer.encode_single_token("0")
+token_id
+
+test_data = pd.read_csv(test_data_path)
+test_data.drop('Unnamed: 0', axis = 'columns', inplace = True)
+test_data.drop('sentiment', axis = 'columns', inplace = True)
+test_data.columns = ['prompt','completion']
+test_data['prompt'] = test_data['prompt'].str.strip()
+#test_data['completion'] = test_data['completion'].str.strip()
+test_data['prompt'] = test_data['prompt'] + "\n\nSentiment:\n\n"
+#test_data['completion'] = " "+test_data['completion'] + " end"
+
+predictions = []
+
+logit_bias = {
+    15: 50,
+    16: 50,
+    17: 50
+}
+for tweet in test_data["prompt"]:
+
+    response = client.completions.create(
+        model=fine_tuned_model,
+        prompt=tweet,
+        max_tokens=1,
+        temperature = 0.1,
+        logit_bias=logit_bias
+        #stop=[" end"]
+    )
+    #predictions.append(response.choices[0].text.strip())
+    predictions.append(response.choices[0].text.strip())
+
+test_data["predicted_sentiment"] = predictions
+
+tweet = "Kaha salman khan\n\nSentiment:\n\n"
+
+response = client.completions.create(
+    model=fine_tuned_model,
+    prompt=tweet,
+    max_tokens = 2,
+    #stop=[" end"]
+)
+#print(response['choices'][0]['prompt'])
+response.choices[0]
+
+#################################################################### OFFENSIVE SPEECH PREDICTION ##################################################################
+
+
+import os
+from pathlib import Path
+!pip install datasets
+!pip install Openai
+from datasets import load_dataset
+#from dotenv import load_dotenv
+#load_dotenv()
+from openai import OpenAI
+import pandas as pd
+import csv
+import json
+
+df = pd.read_csv(csv_file_path)
+df.rename(columns = {'tweet':'prompt','label_en':'completion'}, inplace = True)
+df['prompt'] = df['prompt'].str.strip()
+#df['completion'] = df['completion'].str.strip()
+df['prompt'] = df['prompt'] + "\n\nLabel:\n\n"
+#df['completion'] = " "+df['completion'] + " END"
+df.to_json("gpt_train_prepared.jsonl", orient='records', lines=True)
+
+!openai tools fine_tunes.prepare_data -f gpt_train.jsonl
+train_path = "/content/gpt_train_prepared.jsonl"
+train_id = "file-6PDxzsGO1NIXUrg5q3syxM8N" #changes every time the code is run 
+fine_tune_id = "ftjob-76DoNZyAO45zQaIUq7mqFYAz"
+DO_UPLOAD = False
+DO_FINETUNE = False
+DO_CHECK =  True
+
+
+data = load_dataset("json", data_files={
+    "train": train_path,
+})
+
+api_key =""
+client = OpenAI(
+    api_key=api_key
+)
+
+if DO_UPLOAD:
+    print("Uploading data...")
+    upload_response = client.files.create(
+        file=Path(train_path),
+        purpose="fine-tune"
+    )
+
+    print(upload_response)
+    print(upload_response.id)
+    exit(0)
+
+if DO_FINETUNE:
+    fine_tune_response = client.fine_tuning.jobs.create(
+        model="davinci-002",  # Firstly used curie, which is now deprecated, davinci-002 is the suggested replacement
+        training_file=train_id,
+        hyperparameters={"n_epochs": 2},
+        #classification_n_classes=3
+    )
+
+    print(fine_tune_response)
+
+if DO_CHECK:
+    if fine_tune_id is None:
+        print("fine_tune_id is set to None (no-op)")
+        exit(0)
+
+    retrieve_response = client.fine_tuning.jobs.retrieve(fine_tuning_job_id=fine_tune_id)
+    print(retrieve_response)
+client.fine_tuning.jobs.list_events(fine_tune_id)
+
+# USING THE MODEL
+fine_tuned_model_id = 'ftjob-76DoNZyAO45zQaIUq7mqFYAz'
+api_key =""
+retrieve_response = client.fine_tuning.jobs.retrieve(fine_tuned_model_id)
+fine_tuned_model = retrieve_response.fine_tuned_model
+#!pip install tiktoken
+import tiktoken
+tiktoken.encoding_name_for_model('davinci-002')
+tokenizer = tiktoken.encoding_for_model('davinci-002')
+tokens = ["0", "1"]
+token_id = tokenizer.encode_single_token("0")
+token_id
+
+test_data = pd.read_csv(test_data_path)
+test_data.drop('Unnamed: 0', axis = 'columns', inplace = True)
+test_data.drop('label', axis = 'columns', inplace = True)
+test_data.columns = ['prompt','completion']
+test_data['prompt'] = test_data['prompt'].str.strip()
+#test_data['completion'] = test_data['completion'].str.strip()
+test_data['prompt'] = test_data['prompt'] + "\n\nLabel:\n\n"
+#test_data['completion'] = " "+test_data['completion'] + " end"
+
+predictions = []
+logit_bias = {
+    15: 50,
+    16: 50,
+}
+for tweet in test_data["prompt"]:
+
+    response = client.completions.create(
+        model=fine_tuned_model,
+        prompt=tweet,
+        max_tokens=1,
+        temperature = 0.1,
+        logit_bias=logit_bias
+        #stop=[" end"]
+    )
+    #predictions.append(response.choices[0].text.strip())
+    predictions.append(response.choices[0].text.strip())
+
+test_data["predicted_label"] = predictions
