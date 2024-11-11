@@ -177,7 +177,7 @@ test_df.to_csv("test_predictions_Llama3.1-8B_Hindi_sentiment.csv", index=False)
 print(f"Test predictions saved to test_predictions_Llama3.1-8B_Hindi_sentiment.csv")
 
 
-#------------------------------------------------------------------TOXIC LANGUAGE DETECTION---------------------------------------------------------------------
+#------------------------------------------------------------------OFFENSIVE SPEECH PREDICTION---------------------------------------------------------------------
 
 import numpy as np
 import pandas as pd
