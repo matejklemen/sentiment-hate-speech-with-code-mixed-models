@@ -56,8 +56,7 @@ This repository contains the code and resources for our research project, which 
          ```python
          from transformers import AutoModelForCausalLM, AutoTokenizer
     
-         model = AutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.1-8B",   
-     use_auth_token=True)
+         model = AutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.1-8B",   use_auth_token=True)
          tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.1-8B", use_auth_token=True)
          ```
     4. **Fine-tuning:**
