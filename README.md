@@ -10,7 +10,7 @@ This repository contains the code and resources for our research project, which 
 
 ## Code Files Overview
 
-###**Fine-tuning Scripts:**
+###Fine-tuning Scripts:
 
 * **`GPT_3_finetuning.py`**: Script for fine-tuning the GPT-3 model on tasks like sentiment analysis and offensive speech prediction.
 
