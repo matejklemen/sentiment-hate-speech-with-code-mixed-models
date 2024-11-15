@@ -10,7 +10,7 @@ This repository contains the code and resources for our research project, which 
 
 ## Code Files Overview
 
-**Fine-tuning Scripts:**
+###**Fine-tuning Scripts:**
 
 * **`GPT_3_finetuning.py`**: Script for fine-tuning the GPT-3 model on tasks like sentiment analysis and offensive speech prediction.
 
@@ -66,7 +66,7 @@ This repository contains the code and resources for our research project, which 
        - Train the model and evaluate on a test set.
 
 
-**Model Training and Translation Scripts:**
+###**Model Training and Translation Scripts:**
 
 * **`Monolingual_model_training.py`**: Trains monolingual models on translated datasets to evaluate their performance on code-mixed tasks.
 
@@ -129,7 +129,7 @@ This repository contains the code and resources for our research project, which 
         ```
         - Check the saved CSV files for the translated tweets.
 
-**BERT Fine-tuning Scripts:**
+###**BERT Fine-tuning Scripts:**
 
 * **`bert_hs.py` & `bert_sa.py`**:Fine-tunes BERTs in either code-mixed or monolingual datasets
 
