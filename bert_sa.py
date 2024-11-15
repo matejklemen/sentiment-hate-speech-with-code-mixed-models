@@ -346,11 +346,9 @@ def initialize_model(epochs=2, num_labels=3):
     )
 
     return bert_classifier, optimizer, scheduler
-
 import random
 import time
 import torch.nn as nn
-
 # Specify loss function
 loss_fn = nn.CrossEntropyLoss()
 
@@ -373,13 +371,10 @@ def train(model, train_dataloader, val_dataloader=None, epochs=4, evaluation=Fal
         # Print the header of the result table
         print(f"{'Epoch':^7} | {'Batch':^7} | {'Train Loss':^12} | {'Val Loss':^10} | {'Val Acc':^9} | {'Elapsed':^9}")
         print("-"*70)
-
         # Measure the elapsed time of each epoch
         t0_epoch, t0_batch = time.time(), time.time()
-
         # Reset tracking variables at the beginning of each epoch
         total_loss, batch_loss, batch_counts = 0, 0, 0
-
         # Put the model into the training mode
         model.train()
 
@@ -388,43 +383,32 @@ def train(model, train_dataloader, val_dataloader=None, epochs=4, evaluation=Fal
             batch_counts +=1
             # Load batch to GPU
             b_input_ids, b_attn_mask, b_labels = tuple(t.to(device) for t in batch)
-
             # Zero out any previously calculated gradients
             model.zero_grad()
-
             # Perform a forward pass. This will return logits.
             logits = model(b_input_ids, b_attn_mask)
-
             # Compute loss and accumulate the loss values
             loss = loss_fn(logits, b_labels)
             batch_loss += loss.item()
             total_loss += loss.item()
-
             # Perform a backward pass to calculate gradients
             loss.backward()
-
             # Clip the norm of the gradients to 1.0 to prevent "exploding gradients"
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-
             # Update parameters and the learning rate
             optimizer.step()
             scheduler.step()
-
             # Print the loss values and time elapsed for every 20 batches
             if (step % 20 == 0 and step != 0) or (step == len(train_dataloader) - 1):
                 # Calculate time elapsed for 20 batches
                 time_elapsed = time.time() - t0_batch
-
                 # Print training results
                 print(f"{epoch_i + 1:^7} | {step:^7} | {batch_loss / batch_counts:^12.6f} | {'-':^10} | {'-':^9} | {time_elapsed:^9.2f}")
-
                 # Reset batch tracking variables
                 batch_loss, batch_counts = 0, 0
                 t0_batch = time.time()
-
         # Calculate the average loss over the entire training data
         avg_train_loss = total_loss / len(train_dataloader)
-
         print("-"*70)
         # =======================================
         #               Evaluation
@@ -433,32 +417,24 @@ def train(model, train_dataloader, val_dataloader=None, epochs=4, evaluation=Fal
             # After the completion of each training epoch, measure the model's performance
             # on our validation set.
             val_loss, val_accuracy = evaluate(model, val_dataloader)
-
             # Print performance over the entire training data
             time_elapsed = time.time() - t0_epoch
-
             print(f"{epoch_i + 1:^7} | {'-':^7} | {avg_train_loss:^12.6f} | {loss:^10.6f} | {val_accuracy:^9.2f} | {time_elapsed:^9.2f}")
             print("-"*70)
         print("\n")
-
     print("Training complete!")
 
 def save_model(model, tokenizer, output_dir= out_dir):
     # Create output directory if it doesn't exist
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-
     # Save the model state dictionary
     model_path = os.path.join(output_dir, 'bert_classifier_model.pth')
     torch.save(model.state_dict(), model_path)
-
     # Save the tokenizer
     tokenizer_path = os.path.join(output_dir, 'bert_tokenizer')
     tokenizer.save_pretrained(tokenizer_path)
-
     print(f"Model and tokenizer saved at: {output_dir}")
-
-
 
 def evaluate(model, val_dataloader):
     """After the completion of each training epoch, measure the model's performance
@@ -467,40 +443,30 @@ def evaluate(model, val_dataloader):
     # Put the model into the evaluation mode. The dropout layers are disabled during
     # the test time.
     model.eval()
-
     # Tracking variables
     val_accuracy = []
     val_loss = []
-
     # For each batch in our validation set...
     for batch in val_dataloader:
         # Load batch to GPU
         b_input_ids, b_attn_mask, b_labels = tuple(t.to(device) for t in batch)
-
         # Compute logits
         with torch.no_grad():
             logits = model(b_input_ids, b_attn_mask)
-
         # Compute loss
         loss = loss_fn(logits, b_labels)
         val_loss.append(loss.item())
-
         # Get the predictions
         preds = torch.argmax(logits, dim=1).flatten()
-
         # Calculate the accuracy rate
         accuracy = (preds == b_labels).cpu().numpy().mean() * 100
         val_accuracy.append(accuracy)
-
     # Compute the average accuracy and loss over the validation set.
     val_loss = np.mean(val_loss)
     val_accuracy = np.mean(val_accuracy)
-
     return val_loss, val_accuracy
-
 torch.backends.cudnn.benchmark = True  # Enable cuDNN benchmarking for better performance
 torch.cuda.empty_cache()  # Clear GPU cache to release memory
-
 set_seed(42)    # Set seed for reproducibility
 bert_classifier, optimizer, scheduler = initialize_model(epochs=2)
 train(bert_classifier, train_dataloader, val_dataloader, epochs=5, evaluation=True)
@@ -514,36 +480,25 @@ def bert_predict(model, test_dataloader):
     # Put the model into the evaluation mode. The dropout layers are disabled during
     # the test time.
     model.eval()
-
     all_logits = []
-
     # For each batch in our test set...
     for batch in test_dataloader:
         # Load batch to GPU
         b_input_ids, b_attn_mask = tuple(t.to(device) for t in batch)[:2]
-
         # Compute logits
         with torch.no_grad():
             logits = model(b_input_ids, b_attn_mask)
         all_logits.append(logits)
-
     # Concatenate logits from each batch
     all_logits = torch.cat(all_logits, dim=0)
-
     # Apply softmax to calculate probabilities
     probs = F.softmax(all_logits, dim=1).cpu().numpy()
-
     return probs
-
-
-
 y_scores = bert_predict(bert_classifier, test_dataloader)
-
 # Initialize the output labels
 labels = []
 # Assuming you have the ground truth labels for the test set in 'true_labels'
 # and the probability scores in 'probs'
-
 # Assign predicted class labels
 predicted_labels = torch.argmax(torch.tensor(y_scores), dim=1).numpy()
 true_labels = y_test.tolist()
@@ -555,91 +510,4 @@ f_score = f1_score(true_labels, predicted_labels, average='weighted')
 
 print("Accuracy:", accuracy)
 print("F-score:", f_score)
-
-
-''' End of code'''
-
-
-# # Iterate through each subarray
-# for subarray in y_scores:
-#     max_value = max(sub_array)
-#     # Check if the first value is greater
-#     if subarray[0] == max_value:
-#         labels.append(0)
-#     elif subarray[1] == max_value:
-#         labels.append(1)
-#     else:
-#         labels.append(2)
-
-# # Evaluate the Bert classifier
-# # evaluate_roc(probs, y_val)
-# fpr, tpr, thresholds = roc_curve(y_val, labels)
-# auc_score = roc_auc_score(y_val, labels)
-
-# # Calculate confusion matrix
-# conf_matrix = confusion_matrix(y_val, labels)
-
-# # Extract true positives, true negatives, false positives, and false negatives
-# tn, fp, fn, tp = conf_matrix.ravel()
-
-# # Calculate accuracy
-# accuracy = (tp + tn) / (tp + tn + fp + fn)
-# print(accuracy)
-# print(auc_score)
-
-# # Concatenate the train set and the validation set
-# full_train_data = torch.utils.data.ConcatDataset([train_data, val_data])
-# full_train_sampler = RandomSampler(full_train_data)
-# full_train_dataloader = DataLoader(full_train_data, sampler=full_train_sampler, batch_size=16)
-
-# # Train the Bert Classifier on the entire training data
-# set_seed(42)
-# bert_classifier, optimizer, scheduler = initialize_model(epochs=1)
-# train(bert_classifier, full_train_dataloader, epochs=1)
-
-# bert_classifier.save_pretrained('Cross_lingual/roberta_urdu')
-
-# """# END OF CODE
-
-# """
-
-# # Run `preprocessing_for_bert` on the test set
-# print('Tokenizing data...')
-# test_inputs, test_masks = preprocessing_for_bert(test_data.tweet)
-
-# # Create the DataLoader for our test set
-# test_dataset = TensorDataset(test_inputs, test_masks)
-# test_sampler = SequentialSampler(test_dataset)
-# test_dataloader = DataLoader(test_dataset, sampler=test_sampler, batch_size=16)
-
-# import torch.nn.functional as F
-
-# def bert_predict(model, test_dataloader):
-#     """Perform a forward pass on the trained BERT model to predict probabilities
-#     on the test set.
-#     """
-#     # Put the model into the evaluation mode. The dropout layers are disabled during
-#     # the test time.
-#     model.eval()
-#     all_logits = []
-
-#     # For each batch in our test set...
-#     for batch in test_dataloader:
-#         # Load batch to GPU
-#         b_input_ids, b_attn_mask = tuple(t.to(device) for t in batch)[:2]
-
-#         # Compute logits
-#         with torch.no_grad():
-#             logits = model(b_input_ids, b_attn_mask)
-#             all_logits.append(logits)
-
-#     # Concatenate logits from each batch
-#     all_logits = torch.cat(all_logits, dim=0)
-
-#     # Apply softmax to calculate probabilities
-#     probs = F.softmax(all_logits, dim=1).cpu().numpy()
-
-#     return probs
-
-
 
