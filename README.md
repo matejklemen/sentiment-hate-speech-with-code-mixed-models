@@ -33,7 +33,7 @@ This repository contains the code and resources for our research project, which 
         - Preprocesses test data containing tweets without sentiment labels.
         - Generates sentiment predictions for test tweets using the fine-tuned model's completion functionality.
 
-    **Additional Notes:**
+    4. **Additional Notes:**
         - Replace placeholders like `csv_file_path` and `test_data_path` with your actual file paths.
         - Set your OpenAI API key before running the script.
         - Some sections are commented out by default (data upload). Uncomment them if needed.
@@ -88,7 +88,7 @@ This repository contains the code and resources for our research project, which 
         - Adds predicted sentiment labels to the test DataFrame.
         - Saves the modified test DataFrame as a CSV file.
 
-    **How to Use:**
+    5. **How to Use:**
         - Clone the repository.
         - Prepare your sentiment analysis dataset in CSV format.
         - Choose the appropriate monolingual model.
@@ -118,7 +118,7 @@ This repository contains the code and resources for our research project, which 
         - The script identifies the language of the tweet automatically and translates it to the specified target language (e.g., Hindi).
         - Translated tweets are added to the dataset, which is then saved back to the original CSV.
 
-    **How to Use:**
+    5. **How to Use:**
         - Prepare your dataset in CSV format containing code-mixed text.
         - Ensure you have access to the necessary APIs (OpenAI for GPT-3 and Hugging Face for Llama).
         - Run the script to automate translation and save the translated dataset.
@@ -188,7 +188,7 @@ This repository contains the code and resources for our research project, which 
         tokenizer.save_pretrained("./trained_bert_tokenizer")
         ```
 
-    **How to Use:**
+    7. **How to Use:**
         - Prepare the dataset in CSV format with text and labels (e.g., `toxic/offensive`, `non-toxic/not-offensive` for OSP or `positive`, `neutral`, `negative` for SA).
         - Ensure the correct model, tokenizer, and dataset paths are set.
         - Run the script:
